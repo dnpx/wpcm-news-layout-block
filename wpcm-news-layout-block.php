@@ -231,3 +231,252 @@ final class WPCM_News_Layout_Plugin {
 }
 
 WPCM_News_Layout_Plugin::get_instance();
+
+
+assets/css/main.css
+/* WPCM News Layout Block Styles */
+.wpcm-news-layout {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    font-family: "Times New Roman", Times, serif;
+    background: #ffffff;
+    border: 2px solid #000;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.news-article {
+    background: #fff;
+}
+
+.news-container {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+
+.news-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.news-title {
+    font-size: 2.8rem;
+    font-weight: bold;
+    line-height: 1.1;
+    margin: 0 0 15px 0;
+    color: #000;
+    font-family: "Times New Roman", Times, serif;
+}
+
+.news-title a {
+    color: inherit;
+    text-decoration: none;
+}
+.news-title a:hover {
+    text-decoration: underline;
+}
+
+.news-subtitle {
+    font-size: 1.4rem;
+    font-weight: normal;
+    line-height: 1.3;
+    margin: 0 0 20px 0;
+    color: #333;
+    font-style: italic;
+}
+
+.news-excerpt {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: justify;
+}
+
+.news-images {
+    flex: 0 0 400px;
+    position: relative;
+    max-width: 100%;
+}
+
+.news-image-slideshow,
+.news-image-container {
+    position: relative;
+    width: 100%;
+    height: 450px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.news-image-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.7s ease-in-out;
+    visibility: hidden;
+}
+
+.news-image-slide.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.news-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+}
+
+.slideshow-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    background: #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.dot.active {
+    background: #333;
+}
+
+.no-posts-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+/* Estilos para o botão "Continuar Lendo" */
+.news-read-more {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.news-read-more-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    color: #333;
+    font-size: 0.9rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    text-decoration: none;
+    background-color: transparent;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.news-read-more-btn:hover {
+    background-color: #333;
+    color: #fff;
+    border-color: #333;
+}
+
+
+/* Responsive Design */
+@media (max-width: 968px) {
+    .news-container {
+        flex-direction: column;
+    }
+    .news-content {
+        margin-bottom: 30px;
+    }
+    .news-images {
+        flex: none;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    .news-title {
+        font-size: 2.2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .wpcm-news-layout {
+        padding: 15px;
+        border-width: 1px;
+    }
+    .news-title {
+        font-size: 1.8rem;
+    }
+    .news-subtitle {
+        font-size: 1.2rem;
+    }
+}
+
+
+
+assets/js/main.js
+
+document.addEventListener('DOMContentLoaded', function () {
+  // Encontra todos os slideshows na página
+  const slideshows = document.querySelectorAll('.news-image-slideshow');
+
+  // Pega o intervalo definido no PHP (com um padrão de 2 segundos)
+  const intervalTime = window.wpcm_news_params?.interval || 2000;
+
+  slideshows.forEach((slideshow) => {
+    const slides = slideshow.querySelectorAll('.news-image-slide');
+    const dotsContainer = slideshow.nextElementSibling;
+    const dots = dotsContainer ? dotsContainer.querySelectorAll('.dot') : [];
+    let currentSlide = 0;
+
+    if (slides.length <= 1) {
+      return; // Não faz nada se tiver 1 ou 0 imagens
+    }
+
+    function showSlide(index) {
+      // Esconde o slide atual
+      slides[currentSlide].classList.remove('active');
+      if (dots[currentSlide]) {
+        dots[currentSlide].classList.remove('active');
+      }
+
+      // Define o novo slide
+      currentSlide = index;
+
+      // Mostra o novo slide
+      slides[currentSlide].classList.add('active');
+      if (dots[currentSlide]) {
+        dots[currentSlide].classList.add('active');
+      }
+    }
+
+    // Inicia a rotação automática
+    let slideInterval = setInterval(() => {
+      const nextSlide = (currentSlide + 1) % slides.length;
+      showSlide(nextSlide);
+    }, intervalTime);
+
+    // Adiciona funcionalidade de clique nos pontinhos
+    dots.forEach((dot) => {
+      dot.addEventListener('click', (e) => {
+        const slideIndex = parseInt(e.target.dataset.slideTo, 10);
+        showSlide(slideIndex);
+        
+        // Reinicia o intervalo para não trocar de slide imediatamente após o clique
+        clearInterval(slideInterval);
+        slideInterval = setInterval(() => {
+          const nextSlide = (currentSlide + 1) % slides.length;
+          showSlide(nextSlide);
+        }, intervalTime);
+      });
+    });
+  });
+});
