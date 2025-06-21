@@ -1,241 +1,106 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Documentação do Plugin: WPCM News Layout Block</title>
-    <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --light-gray: #ecf0f1;
-            --medium-gray: #bdc3c7;
-            --dark-gray: #7f8c8d;
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --code-bg: #e8eef2;
-            --highlight-bg: #fffbe6;
-            --highlight-border: #ffe58f;
-        }
+=== WPCM News Layout Block ===
+Contributors: dopaixao
+Tags: news, layout, block, shortcode, post, journal, newspaper, slideshow, carousel, excerpt
+Requires at least: 5.5
+Tested up to: 6.5
+Stable tag: 2.3
+Requires PHP: 7.4
+License: GPL v2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.7;
-            background-color: var(--bg-color);
-            color: var(--primary-color);
-            margin: 0;
-            padding: 20px;
-        }
+Crie um layout de notícias elegante e responsivo com imagens laterais em slideshow, usando um simples shortcode.
 
-        .container {
-            max-width: 900px;
-            margin: 20px auto;
-            background-color: var(--card-bg);
-            padding: 30px 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
+== Description ==
 
-        h1, h2, h3 {
-            font-weight: 700;
-            line-height: 1.3;
-            margin-top: 0;
-            color: var(--primary-color);
-        }
+Transforme a exibição dos seus posts com o **WPCM News Layout Block**, um plugin poderoso e leve que cria um layout no estilo de jornal para destacar sua postagem mais recente. Ideal para homepages, portais de notícias ou qualquer área do site que precise de um visual impactante e profissional.
 
-        h1 {
-            font-size: 2.5rem;
-            text-align: center;
-            border-bottom: 2px solid var(--light-gray);
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-        }
+Com um único shortcode, você pode exibir o título, subtítulo, um resumo customizável e um carrossel de imagens que prende a atenção do leitor.
 
-        h2 {
-            font-size: 1.8rem;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--medium-gray);
-            color: var(--secondary-color);
-        }
+**Principais Funcionalidades:**
 
-        h3 {
-            font-size: 1.3rem;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-        
-        p {
-            margin-bottom: 15px;
-        }
+*   **Layout de Jornal Profissional:** Exibe o conteúdo de texto à esquerda e as imagens à direita, em um layout limpo e responsivo.
+*   **Slideshow de Imagens Automático:** Se o seu post tiver mais de uma imagem (com altura mínima definida), o plugin cria automaticamente um slideshow com rotação a cada 2 segundos (customizável).
+*   **Controle Total do Resumo:** Use a tag especial `[resumoXXX]` diretamente no seu post para definir o número exato de caracteres que devem aparecer no resumo, de forma invisível para o leitor.
+*   **Alta Performance com Cache:** O resultado do bloco é armazenado em cache para garantir um carregamento ultrarrápido, com limpeza automática sempre que um post é atualizado.
+*   **Totalmente Customizável:** Use os parâmetros do shortcode para filtrar por categoria, alterar a velocidade do slideshow, definir a altura mínima das imagens, mudar a cor de fundo e até remover a borda.
+*   **Fácil de Usar:** Basta adicionar um simples shortcode a qualquer página, post ou widget.
 
-        code {
-            background-color: var(--code-bg);
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-            font-size: 0.95em;
-            color: #d6336c;
-        }
-        
-        .code-block {
-            background-color: var(--code-bg);
-            padding: 15px;
-            border-radius: 6px;
-            border: 1px solid #d1dce5;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            margin-bottom: 20px;
-        }
+Este plugin é a solução perfeita para quem busca um design de alta qualidade sem a complexidade de page builders pesados.
 
-        .code-block code {
-            background-color: transparent;
-            padding: 0;
-            color: #333;
-        }
+== Installation ==
 
-        .parameter {
-            margin-bottom: 25px;
-            border-left: 4px solid var(--secondary-color);
-            padding-left: 20px;
-        }
-        
-        .highlight {
-            background-color: var(--highlight-bg);
-            border: 1px solid var(--highlight-border);
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
+A instalação é simples e rápida.
 
-        .highlight strong {
-            color: #c47d00;
-        }
+**1. Pelo Painel do WordPress (Recomendado):**
 
-        strong, b {
-            font-weight: 600;
-        }
+1.  No seu painel, vá para `Plugins > Adicionar Novo`.
+2.  Procure por "WPCM News Layout Block".
+3.  Clique em `Instalar Agora` e, em seguida, em `Ativar`.
+4.  Pronto! Agora você pode usar o shortcode `[wpcm_news_layout]` em suas páginas.
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 20px;
-            }
-            h1 { font-size: 2rem; }
-            h2 { font-size: 1.5rem; }
-        }
-    </style>
-</head>
-<body>
+**2. Manualmente (via FTP):**
 
-    <div class="container">
-        <h1>Documentação: WPCM News Layout Block</h1>
-        <p>Este guia detalha todas as funcionalidades e opções de shortcode disponíveis no plugin <strong>WPCM News Layout Block</strong>. Use este documento para customizar a exibição das suas notícias de forma rápida e eficiente.</p>
+1.  Faça o download do arquivo `.zip` do plugin.
+2.  Descompacte o arquivo. Você terá uma pasta chamada `wpcm-news-layout-block`.
+3.  Faça o upload desta pasta para o diretório `/wp-content/plugins/` do seu site.
+4.  Vá para a página `Plugins` no seu painel do WordPress e ative o "WPCM News Layout Block".
 
-        <!-- Seção 1: Uso Básico -->
-        <section id="basic-usage">
-            <h2>Uso Básico</h2>
-            <p>O shortcode mais simples exibe o post mais recente de qualquer categoria, usando todas as configurações padrão.</p>
-            <div class="code-block">
-                <code>[wpcm_news_layout]</code>
-            </div>
-            <p><strong>Configurações Padrão:</strong></p>
-            <ul>
-                <li>Exibe o post mais recente.</li>
-                <li>Imagens rotacionam a cada 2 segundos.</li>
-                <li>Altura mínima da imagem para inclusão é de 400px.</li>
-                <li>O fundo é branco e a borda preta é visível.</li>
-            </ul>
-        </section>
+== Frequently Asked Questions ==
 
-        <!-- Seção 2: Parâmetros do Shortcode -->
-        <section id="parameters">
-            <h2>Parâmetros Disponíveis</h2>
-            <p>Você pode adicionar parâmetros ao shortcode para customizar seu comportamento. Combine-os como precisar.</p>
+= Como eu uso o plugin? =
 
-            <div class="parameter">
-                <h3><code>category</code></h3>
-                <p>Filtra para exibir o post mais recente de uma categoria específica. Use o "slug" da categoria (o nome amigável para URL).</p>
-                <p><strong>Exemplo:</strong></p>
-                <div class="code-block"><code>[wpcm_news_layout category="tecnologia"]</code></div>
-            </div>
+Basta adicionar o shortcode `[wpcm_news_layout]` a qualquer página, post ou widget de texto onde você queira que o bloco de notícias apareça.
 
-            <div class="parameter">
-                <h3><code>interval</code></h3>
-                <p>Altera a velocidade de rotação do slideshow de imagens. O valor deve ser em milissegundos (1000 = 1 segundo).</p>
-                <p><strong>Padrão:</strong> <code>2000</code></p>
-                <p><strong>Exemplo (rotação a cada 5 segundos):</strong></p>
-                <div class="code-block"><code>[wpcm_news_layout interval="5000"]</code></div>
-            </div>
+= Como posso customizar o shortcode? =
 
-            <div class="parameter">
-                <h3><code>min_height</code></h3>
-                <p>Define a altura mínima em pixels que uma imagem deve ter para ser incluída no bloco.</p>
-                <p><strong>Padrão:</strong> <code>400</code></p>
-                <p><strong>Exemplo (apenas imagens com 500px de altura ou mais):</strong></p>
-                <div class="code-block"><code>[wpcm_news_layout min_height="500"]</code></div>
-            </div>
+Você pode usar vários parâmetros. Por exemplo, para mostrar o post mais recente da categoria "esportes", sem borda e com um slideshow mais lento, você usaria:
+`[wpcm_news_layout category="esportes" show_border="false" interval="4000"]`
 
-            <div class="parameter">
-                <h3><code>background_color</code></h3>
-                <p>Define uma cor de fundo para todo o bloco. Use um código de cor hexadecimal.</p>
-                <p><strong>Padrão:</strong> <code>#ffffff</code> (branco)</p>
-                <p><strong>Exemplo (fundo cinza claro):</strong></p>
-                <div class="code-block"><code>[wpcm_news_layout background_color="#f5f5f5"]</code></div>
-            </div>
+= O slideshow de imagens não está aparecendo. Por quê? =
 
-            <div class="parameter">
-                <h3><code>show_border</code></h3>
-                <p>Controla a visibilidade da borda ao redor do bloco. Para remover a borda, use o valor <code>"false"</code>.</p>
-                <p><strong>Padrão:</strong> <code>"true"</code></p>
-                <p><strong>Exemplo (bloco sem borda):</strong></p>
-                <div class="code-block"><code>[wpcm_news_layout show_border="false"]</code></div>
-            </div>
-        </section>
+O slideshow só é ativado se o post em questão tiver **mais de uma imagem** que atenda ao critério de altura mínima (padrão de 400px). Verifique se o post tem múltiplas imagens anexadas ou na galeria e se elas são grandes o suficiente.
 
-        <!-- Seção 3: Funcionalidade Especial -->
-        <section id="special-feature">
-            <h2>Funcionalidade Especial: Resumo Dinâmico</h2>
-            <p>Para um controle preciso sobre o tamanho do resumo exibido, você pode usar uma tag especial diretamente no editor de posts do WordPress.</p>
-            
-            <div class="highlight">
-                <p><strong>Importante:</strong> Esta tag é uma <strong>instrução para o sistema</strong> e deve ser colocada no <strong>corpo do texto do seu post</strong>, não no shortcode. Ela é <strong>totalmente invisível</strong> para os leitores do seu site e para as prévias de compartilhamento em redes sociais.</p>
-            </div>
+= Como funciona a tag `[resumoXXX]`? =
 
-            <h3>Formato da Tag: <code>[resumoXXX]</code></h3>
-            <p>Substitua <code>XXX</code> pelo número exato de caracteres que você deseja exibir no resumo.</p>
-            
-            <p><strong>Exemplo 1 (mostrar 300 caracteres):</strong></p>
-            <p>No editor do seu post, comece o texto assim:</p>
-            <div class="code-block"><code>[resumo300]Especialistas identificaram um vazamento de dados que pode ter atingido mais de 16 bilhões de senhas...</code></div>
+É uma instrução especial que você coloca **dentro do conteúdo do seu post**, não no shortcode. Por exemplo, para mostrar 250 caracteres, comece o texto do seu post com `[resumo250]`. Esta tag será invisível para seus leitores, mas instruirá o plugin a cortar o resumo nesse tamanho. Se a tag não for usada, o resumo padrão do WordPress será exibido.
 
-            <p><strong>Exemplo 2 (mostrar 180 caracteres para uma chamada curta):</strong></p>
-            <div class="code-block"><code>[resumo180]Um grande vazamento de dados afetou senhas da Apple, Meta e Google, segundo investigação da Cybernews...</code></div>
-            <p>Se a tag não for encontrada no post, o plugin usará o resumo padrão do WordPress automaticamente.</p>
-        </section>
-        
-        <!-- Seção 4: Exemplos Combinados -->
-        <section id="combined-examples">
-            <h2>Exemplos Combinados</h2>
-            <p>Veja como combinar múltiplos parâmetros para um resultado totalmente customizado.</p>
-            
-            <p><strong>Exemplo:</strong> Exibir a notícia mais recente da categoria "viagens", sem borda, com fundo azul claro, e com um slideshow que troca de imagem a cada 4 segundos.</p>
-            <div class="code-block">
-                <code>[wpcm_news_layout category="viagens" show_border="false" background_color="#eaf4ff" interval="4000"]</code>
-            </div>
-        </section>
+= O plugin pareceu um pouco lento na primeira vez que carreguei a página. Isso é normal? =
 
-        <!-- Seção 5: Observações -->
-        <section id="notes">
-            <h2>Observações Finais</h2>
-            <ul>
-                <li><strong>Cache:</strong> Para garantir alta performance, o resultado do bloco é salvo em um cache (transient) por 1 hora.</li>
-                <li><strong>Atualização Automática:</strong> O cache é limpo automaticamente sempre que você salva ou atualiza um post, garantindo que o conteúdo exibido esteja sempre atualizado.</li>
-            </ul>
-        </section>
+Sim. Na primeira carga, o plugin gera o conteúdo, busca as imagens e salva tudo em um cache para otimizar a performance. As visitas seguintes à mesma página serão quase instantâneas, pois serão servidas diretamente do cache.
 
-    </div>
+== Screenshots ==
 
-</body>
-</html>
+1.  Exemplo do layout de notícias em ação, mostrando o conteúdo à esquerda e a imagem à direita.
+2.  Detalhe do slideshow com múltiplas imagens e os pontos de navegação.
+3.  Exemplo de uso da tag `[resumoXXX]` no editor de posts para controlar o tamanho do resumo.
+4.  Exemplos de customização, um com cor de fundo diferente e outro sem a borda.
+5.  O meta box "Subtítulo da Notícia" disponível na tela de edição de posts.
+
+== Changelog ==
+
+= 2.3 =
+*   **Correção Crítica:** Corrigido o bug onde a tag `[resumoXXX]` podia aparecer no conteúdo público do post. A prioridade do filtro foi ajustada para garantir que a tag seja sempre removida antes da exibição.
+
+= 2.2 =
+*   **Novidade:** Adicionado o parâmetro `background_color` para permitir a customização da cor de fundo do bloco.
+*   **Novidade:** Adicionado o parâmetro `show_border="false"` para permitir a remoção da borda do bloco.
+*   **Melhoria:** Implementado um filtro global para remover a tag `[resumoXXX]` de todo o conteúdo público, impedindo que ela apareça em compartilhamentos sociais ou no próprio post.
+
+= 2.1 =
+*   **Novidade:** Implementada a funcionalidade de resumo dinâmico com a tag `[resumoXXX]` no editor de posts.
+*   **Novidade:** Adicionado um botão "Continuar Lendo" com estilo discreto ao final do resumo.
+
+= 2.0 =
+*   **Novidade:** Refatoração completa para uma arquitetura orientada a objetos, mais limpa e segura.
+*   **Novidade:** Implementado um sistema de cache com Transients para uma melhoria drástica de performance.
+*   **Novidade:** Adicionado o arquivo JavaScript (`main.js`) para controlar o slideshow de imagens.
+*   **Melhoria:** Otimizada a busca por imagens, substituindo `preg_match` por `get_attached_media` para maior velocidade.
+*   **Melhoria:** CSS e JS agora são carregados condicionalmente apenas quando o shortcode está presente na página.
+
+= 1.0 =
+*   Lançamento inicial do plugin.
+
+== Upgrade Notice ==
+
+= 2.3 =
+Esta versão corrige um bug importante onde a tag `[resumoXXX]` podia aparecer no conteúdo do post. Atualização altamente recomendada para garantir que a tag permaneça invisível para os leitores.
