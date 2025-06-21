@@ -3,7 +3,7 @@
  * Plugin Name:       WPCM News Layout Block
  * Plugin URI:        https://rd5.com/dev
  * Description:       Plugin otimizado para exibir postagens em layout de jornal com imagens laterais e slideshow.
- * Version:           2.6
+ * Version:           3.6
  * Author:            Daniel Oliveira da Paixao (Refatorado por IA)
  * Author URI:        https://rd5.com/dev
  * Text Domain:       wpcm-news-layout-block
@@ -25,17 +25,15 @@ final class WPCM_News_Layout_Plugin {
     private static $instance;
     private $load_scripts = false;
     private $slideshow_interval = 2000;
+    private $option_name = 'wpcm_news_settings';
     
     private $color_map = [
-        'preto'     => '#000000', 'branco'    => '#ffffff', 'vermelho'  => '#dc3545',
-        'verde'     => '#28a745', 'azul'      => '#007bff', 'amarelo'   => '#ffc107',
-        'cinza'     => '#6c757d', 'cinzaclaro'=> '#f8f9fa',
+        'preto' => '#000000', 'branco' => '#ffffff', 'vermelho' => '#dc3545', 'verde' => '#28a745',
+        'azul' => '#007bff', 'amarelo' => '#ffc107', 'cinza' => '#6c757d', 'cinzaclaro' => '#f8f9fa',
     ];
 
     public static function get_instance() {
-        if (null === self::$instance) {
-            self::$instance = new self();
-        }
+        if (null === self::$instance) { self::$instance = new self(); }
         return self::$instance;
     }
 
@@ -44,89 +42,244 @@ final class WPCM_News_Layout_Plugin {
         add_shortcode('wpcm_news_layout', [$this, 'render_shortcode']);
         add_action('add_meta_boxes', [$this, 'add_subtitle_meta_box']);
         add_action('save_post', [$this, 'save_subtitle_meta']);
-        add_action('save_post_post', [$this, 'clear_transient_cache']);
+        add_action('save_post_post', [$this, 'clear_all_plugin_transients']);
         add_action('wp_footer', [$this, 'enqueue_assets']);
         add_filter('the_content', [$this, 'strip_magic_tag_from_content'], 99);
-        add_action('admin_menu', [$this, 'create_admin_docs_page']);
+        add_action('admin_menu', [$this, 'create_admin_menu']);
+        add_action('admin_init', [$this, 'register_plugin_settings']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+        add_action('update_option_' . $this->option_name, [$this, 'clear_all_plugin_transients'], 10, 0);
     }
 
-    // --- FUNÇÕES DA PÁGINA DE DOCUMENTAÇÃO ---
+    // --- PAINEL DE CONFIGURAÇÕES ---
 
-    public function create_admin_docs_page() {
-        add_menu_page( 'Documentação WPCM News Layout', 'News Layout', 'manage_options', 'wpcm_news_layout_docs', [$this, 'render_admin_docs_page'], 'dashicons-layout', 26 );
+    public function create_admin_menu() {
+        add_menu_page( 'Configurações do Layout de Notícia', 'Layout de Notícia', 'manage_options', 'wpcm_news_layout_settings', [$this, 'render_settings_page'], 'dashicons-text-page', 3 );
     }
 
-    public function render_admin_docs_page() {
+    public function enqueue_admin_assets($hook) {
+        if ($hook != 'toplevel_page_wpcm_news_layout_settings') { return; }
+        wp_enqueue_style('wp-color-picker');
+        wp_enqueue_script('wp-color-picker');
+        add_action('admin_footer', function() {
+            echo '<script type="text/javascript">jQuery(document).ready(function($){$(".wp-color-picker-field").wpColorPicker();});</script>';
+        });
+    }
+
+    public function register_plugin_settings() {
+        register_setting($this->option_name, $this->option_name);
+        add_settings_section('wpcm_content_section', 'Configurações de Conteúdo Padrão', null, $this->option_name);
+        add_settings_field('default_category', 'Categoria Padrão (Slug)', [$this, 'render_field'], $this->option_name, 'wpcm_content_section', ['type' => 'text', 'id' => 'default_category', 'default' => 'manchete', 'placeholder' => 'manchete']);
+        add_settings_field('excerpt_length', 'Tamanho do Resumo (caracteres)', [$this, 'render_field'], $this->option_name, 'wpcm_content_section', ['type' => 'number', 'id' => 'excerpt_length', 'default' => 400]);
+        add_settings_section('wpcm_style_section', 'Estilos Padrão', null, $this->option_name);
+        add_settings_field('title_font_size', 'Tamanho da Fonte do Título (px)', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'number', 'id' => 'title_font_size', 'default' => 62]);
+        add_settings_field('title_font_family', 'Família da Fonte do Título', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'text', 'id' => 'title_font_family', 'default' => 'Merriweather, Georgia, serif', 'placeholder' => 'Merriweather, serif']);
+        add_settings_field('bg_color', 'Cor de Fundo do Bloco', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'color', 'id' => 'bg_color', 'default' => '#ffffff']);
+        add_settings_field('text_color', 'Cor do Texto', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'color', 'id' => 'text_color', 'default' => '#000000']);
+        add_settings_field('btn_bg_color', 'Cor de Fundo do Botão', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'color', 'id' => 'btn_bg_color', 'default' => '#000000']);
+        add_settings_field('btn_text_color', 'Cor do Texto do Botão', [$this, 'render_field'], $this->option_name, 'wpcm_style_section', ['type' => 'color', 'id' => 'btn_text_color', 'default' => '#ffffff']);
+    }
+
+    public function render_field($args) {
+        $options = get_option($this->option_name, []);
+        $value = isset($options[$args['id']]) ? esc_attr($options[$args['id']]) : $args['default'];
+        $class = ($args['type'] === 'color') ? 'wp-color-picker-field' : '';
+        $placeholder = isset($args['placeholder']) ? 'placeholder="' . $args['placeholder'] . '"' : '';
+        echo "<input type='{$args['type']}' id='{$args['id']}' name='{$this->option_name}[{$args['id']}]' value='{$value}' class='{$class}' {$placeholder} />";
+    }
+
+    public function render_settings_page() {
         ?>
         <div class="wrap">
-            <h1><?php _e('Documentação: WPCM News Layout Block', 'wpcm-news-layout-block'); ?></h1>
-            <p><?php _e('Este guia detalha todas as funcionalidades e opções de shortcode disponíveis no plugin. Use-o para customizar a exibição das suas notícias de forma rápida e eficiente.', 'wpcm-news-layout-block'); ?></p>
-            <style> .wpcm-docs-section { background: #fff; border: 1px solid #ccd0d4; padding: 1px 20px 20px; margin-top: 20px; border-radius: 4px; } .wpcm-docs-section h2 { font-size: 1.5em; border-bottom: 1px solid #ccd0d4; padding-bottom: 10px; } .wpcm-docs-section h3 { font-size: 1.2em; margin-top: 30px; } .wpcm-docs-section code { background: #f0f0f1; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 14px; color: #d6336c; } .wpcm-docs-section pre { background: #f0f0f1; padding: 15px; border-radius: 4px; border: 1px solid #ddd; white-space: pre-wrap; word-wrap: break-word; } .wpcm-docs-section pre code { background: none; border: none; padding: 0; color: #333; } .wpcm-docs-highlight { background: #fffbe6; border-left: 4px solid #ffb900; padding: 10px 20px; margin: 20px 0; } </style>
-            <div class="wpcm-docs-section">
-                <h2><?php _e('Uso Básico', 'wpcm-news-layout-block'); ?></h2>
-                <p><?php _e('O shortcode mais simples exibe o post mais recente com as configurações padrão.', 'wpcm-news-layout-block'); ?></p>
-                <pre><code>[wpcm_news_layout]</code></pre>
-            </div>
-            <div class="wpcm-docs-section">
-                <h2><?php _e('A "Magic Tag": Controle Total no Editor', 'wpcm-news-layout-block'); ?></h2>
-                <p><?php _e('Esta é a funcionalidade mais poderosa. Use uma única tag no corpo do seu post para controlar resumo e cores.', 'wpcm-news-layout-block'); ?></p>
-                <div class="wpcm-docs-highlight"><p><strong><?php _e('Importante:', 'wpcm-news-layout-block'); ?></strong> <?php _e('A tag é colocada no editor de texto do post, não no shortcode. Ela é invisível para seus leitores e para as redes sociais.', 'wpcm-news-layout-block'); ?></p></div>
-                <h3><?php _e('Formato da Tag', 'wpcm-news-layout-block'); ?></h3>
-                <p><?php _e('Use hifens para separar as instruções. A ordem não importa e você pode usar apenas o que precisar.', 'wpcm-news-layout-block'); ?></p>
-                <pre><code>[resumoXXX-fundoYYY-textoZZZ]</code></pre>
-                <h3><?php _e('Exemplos da Magic Tag', 'wpcm-news-layout-block'); ?></h3>
-                <p><strong><?php _e('Resumo, Fundo Preto e Texto Branco:', 'wpcm-news-layout-block'); ?></strong><br><code>[resumo400-fundopreto-textobranco]</code></p>
-                <p><strong><?php _e('Apenas um Fundo Azul:', 'wpcm-news-layout-block'); ?></strong><br><code>[fundoazul]</code></p>
-                <p><strong><?php _e('Usando Cores Hexadecimais:', 'wpcm-news-layout-block'); ?></strong><br><code>[fundo#f0f8ff-texto#2F4F4F-resumo200]</code></p>
-                <p><strong><?php _e('Cores Amigáveis Disponíveis:', 'wpcm-news-layout-block'); ?></strong> <code>preto</code>, <code>branco</code>, <code>vermelho</code>, <code>verde</code>, <code>azul</code>, <code>amarelo</code>, <code>cinza</code>, <code>cinzaclaro</code>.</p>
-            </div>
-            <div class="wpcm-docs-section">
-                <h2><?php _e('Parâmetros do Shortcode', 'wpcm-news-layout-block'); ?></h2>
-                <p><?php _e('Use estes parâmetros para customizações gerais. Lembre-se que a "Magic Tag" no post sempre terá prioridade sobre eles.', 'wpcm-news-layout-block'); ?></p>
-                <h3><code>category</code></h3><p><?php _e('Filtra posts por slug da categoria.', 'wpcm-news-layout-block'); ?></p><pre><code>[wpcm_news_layout category="tecnologia"]</code></pre>
-                <h3><code>interval</code></h3><p><?php _e('Define o tempo do slideshow em milissegundos (padrão: 2000).', 'wpcm-news-layout-block'); ?></p><pre><code>[wpcm_news_layout interval="5000"]</code></pre>
-                <h3><code>min_height</code></h3><p><?php _e('Define a altura mínima da imagem em pixels (padrão: 400).', 'wpcm-news-layout-block'); ?></p><pre><code>[wpcm_news_layout min_height="500"]</code></pre>
-                <h3><code>background_color</code></h3><p><?php _e('Define uma cor de fundo padrão (pode ser sobrescrita pela Magic Tag).', 'wpcm-news-layout-block'); ?></p><pre><code>[wpcm_news_layout background_color="#f5f5f5"]</code></pre>
-                <h3><code>show_border</code></h3><p><?php _e('Remove a borda do bloco (padrão: "true").', 'wpcm-news-layout-block'); ?></p><pre><code>[wpcm_news_layout show_border="false"]</code></pre>
-            </div>
+            <h1>Configurações - Layout de Notícia</h1>
+            <p>Defina aqui os valores padrão para todos os blocos de notícias. Lembre-se que a "Magic Tag" em um post individual sempre terá prioridade sobre estas configurações.</p>
+            <form action="options.php" method="post">
+                <?php
+                settings_fields($this->option_name);
+                do_settings_sections($this->option_name);
+                submit_button('Salvar Configurações');
+                ?>
+            </form>
         </div>
         <?php
     }
-    
+
     // --- LÓGICA PRINCIPAL DO PLUGIN ---
 
-    /**
-     * CORREÇÃO: A função register_block() foi reinserida na classe.
-     * Esta função é necessária para o hook 'init' e evita o erro fatal.
-     */
     public function register_block() {
         if (function_exists('register_block_type')) {
-            register_block_type(__DIR__ . '/build', [
-                'render_callback' => [$this, 'render_block_callback'],
-            ]);
+            register_block_type(__DIR__ . '/build', ['render_callback' => [$this, 'render_block_callback']]);
         }
     }
-
+    
+    public function render_shortcode($atts) {
+        $atts = shortcode_atts(['category' => '', 'min_height' => 400, 'interval' => 2000, 'show_border' => 'true'], $atts, 'wpcm_news_layout');
+        return $this->render_block_callback($atts);
+    }
+    
     public function strip_magic_tag_from_content($content) {
-        return preg_replace('/\[(resumo|fundo|texto)[^\]]*\]/i', '', $content);
+        return preg_replace('/\[(resumo|fundo|texto|botaofundo|botaotexto|fonte|negrito)[^\]]*\]/i', '', $content);
     }
     
     private function get_attributes_from_magic_tag($content) {
         $attributes = [];
-        if (preg_match('/\[((resumo|fundo|texto)[^\]]*)\]/i', $content, $matches)) {
+        if (preg_match('/\[((resumo|fundo|texto|botaofundo|botaotexto|fonte|negrito)[^\]]*)\]/i', $content, $matches)) {
             $attributes['full_tag'] = $matches[0];
             $parts = explode('-', $matches[1]);
             foreach ($parts as $part) {
-                if (strpos($part, 'resumo') === 0) {
-                    $attributes['resumo'] = (int) preg_replace('/\D/', '', $part);
-                } elseif (strpos($part, 'fundo') === 0) {
-                    $attributes['fundo'] = $this->translate_color(str_replace('fundo', '', $part));
-                } elseif (strpos($part, 'texto') === 0) {
-                    $attributes['texto'] = $this->translate_color(str_replace('texto', '', $part));
-                }
+                if (strpos($part, 'resumo') === 0) $attributes['resumo'] = (int) preg_replace('/\D/', '', $part);
+                elseif (strpos($part, 'fundo') === 0) $attributes['fundo'] = $this->translate_color(str_replace('fundo', '', $part));
+                elseif (strpos($part, 'texto') === 0) $attributes['texto'] = $this->translate_color(str_replace('texto', '', $part));
+                elseif (strpos($part, 'botaofundo') === 0) $attributes['botaofundo'] = $this->translate_color(str_replace('botaofundo', '', $part));
+                elseif (strpos($part, 'botaotexto') === 0) $attributes['botaotexto'] = $this->translate_color(str_replace('botaotexto', '', $part));
+                elseif (strpos($part, 'fonte') === 0) $attributes['fonte'] = (int) preg_replace('/\D/', '', $part);
+                elseif ($part === 'negrito') $attributes['negrito'] = true;
             }
         }
         return $attributes;
+    }
+
+    public function render_block_callback($attributes) {
+        $global_options = get_option($this->option_name, []);
+        $query_category = !empty($attributes['category']) ? sanitize_text_field($attributes['category']) : ($global_options['default_category'] ?? '');
+        $show_border = isset($attributes['show_border']) ? filter_var($attributes['show_border'], FILTER_VALIDATE_BOOLEAN) : true;
+        $this->slideshow_interval = isset($attributes['interval']) ? absint($attributes['interval']) : 2000;
+        $min_height = isset($attributes['min_height']) ? absint($attributes['min_height']) : 400;
+
+        $transient_key = 'wpcm_news_layout_v3.6_' . md5(serialize($attributes) . $query_category);
+        $cached_html = get_transient($transient_key);
+        if (false !== $cached_html) { $this->load_scripts = true; return $cached_html; }
+        
+        $args = ['post_type' => 'post', 'posts_per_page' => 1, 'post_status' => 'publish', 'orderby' => 'date', 'order' => 'DESC'];
+        if (!empty($query_category)) { $args['category_name'] = $query_category; }
+        
+        $query = new WP_Query($args);
+        $output = '';
+        if ($query->have_posts()) {
+            $this->load_scripts = true;
+            ob_start();
+            while ($query->have_posts()) {
+                $query->the_post();
+                $post_id = get_the_ID();
+                $post_images = $this->get_post_images($post_id, $min_height);
+                $tag_attributes = $this->get_attributes_from_magic_tag(get_post_field('post_content', $post_id));
+                
+                $final_title_size = !empty($tag_attributes['fonte']) ? $tag_attributes['fonte'] : ($global_options['title_font_size'] ?? 62);
+                $final_title_font = $global_options['title_font_family'] ?? 'Merriweather, Georgia, serif';
+                $is_bold = !empty($tag_attributes['negrito']);
+                $final_bg = !empty($tag_attributes['fundo']) ? $tag_attributes['fundo'] : ($global_options['bg_color'] ?? '#ffffff');
+                $final_text = !empty($tag_attributes['texto']) ? $tag_attributes['texto'] : ($global_options['text_color'] ?? '#000000');
+                $final_btn_bg = !empty($tag_attributes['botaofundo']) ? $tag_attributes['botaofundo'] : ($global_options['btn_bg_color'] ?? '#000000');
+                $final_btn_text = !empty($tag_attributes['botaotexto']) ? $tag_attributes['botaotexto'] : ($global_options['btn_text_color'] ?? '#ffffff');
+
+                $unique_id = 'wpcm-block-' . uniqid();
+                $title_style = "font-family: {$final_title_font}; font-size: {$final_title_size}px;";
+                if ($is_bold) { $title_style .= " font-weight: bold !important;"; }
+                
+                $inline_styles = "#{$unique_id} .news-title a { {$title_style} }";
+                if (!$show_border) $inline_styles .= "#{$unique_id} { border: none; padding: 30px; }";
+                $inline_styles .= "#{$unique_id} { background-color: " . esc_attr($final_bg) . "; }";
+                $inline_styles .= "#{$unique_id} .news-title, #{$unique_id} .news-subtitle, #{$unique_id} .news-excerpt { color: " . esc_attr($final_text) . "; }";
+                $inline_styles .= "#{$unique_id} .news-read-more-btn { background-color: " . esc_attr($final_btn_bg) . "; color: " . esc_attr($final_btn_text) . "; border-color: " . esc_attr($final_btn_bg) . "; }";
+                
+                echo '<style>' . $inline_styles . '</style>';
+                ?>
+                <div id="<?php echo esc_attr($unique_id); ?>" class="wpcm-news-layout">
+                    <h1 class="news-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h1>
+                    
+                    <div class="news-content">
+                        <?php $subtitle = get_post_meta($post_id, 'subtitle', true); if (!empty($subtitle)) { echo '<h2 class="news-subtitle">' . esc_html($subtitle) . '</h2>'; } ?>
+                        <div class="news-excerpt"><?php echo $this->get_custom_excerpt($post_id, $tag_attributes, $global_options); ?></div>
+                        <div class="news-read-more"> <a href="<?php the_permalink(); ?>" class="news-read-more-btn">Continuar Lendo →</a> </div>
+                    </div>
+
+                    <?php if (!empty($post_images)) : ?>
+                        <div class="news-images">
+                            <?php if (count($post_images) > 1) : ?>
+                                <div class="news-image-slideshow"> <?php foreach ($post_images as $index => $image) : ?><div class="news-image-slide<?php echo $index === 0 ? ' active' : ''; ?>"><img src="<?php echo esc_url($image['url']); ?>" alt="<?php echo esc_attr($image['alt']); ?>" class="news-image" loading="lazy" /></div><?php endforeach; ?> </div>
+                                <div class="slideshow-dots"> <?php for ($i = 0; $i < count($post_images); $i++) : ?><span class="dot<?php echo $i === 0 ? ' active' : ''; ?>" data-slide-to="<?php echo $i; ?>"></span><?php endfor; ?> </div>
+                            <?php else : ?>
+                                <div class="news-image-container"><img src="<?php echo esc_url($post_images[0]['url']); ?>" alt="<?php echo esc_attr($post_images[0]['alt']); ?>" class="news-image" loading="lazy" /></div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php
+            }
+            $output = ob_get_clean();
+        } else { $output = '<!-- WPCM News: Nenhuma postagem encontrada para os critérios definidos. -->'; }
+        
+        wp_reset_postdata();
+        set_transient($transient_key, $output, HOUR_IN_SECONDS);
+        return $output;
+    }
+    
+    // --- FUNÇÕES AUXILIARES COMPLETAS ---
+
+    public function clear_all_plugin_transients() {
+        global $wpdb;
+        $prefix = '_transient_wpcm_news_layout_v3.6_';
+        $wpdb->query($wpdb->prepare("DELETE FROM $wpdb->options WHERE option_name LIKE %s", $wpdb->esc_like($prefix) . '%'));
+    }
+
+    private function get_post_images($post_id, $min_height = 400) {
+        $images = [];
+        $unique_ids = [];
+        if (has_post_thumbnail($post_id)) {
+            $thumb_id = get_post_thumbnail_id($post_id);
+            $meta = wp_get_attachment_metadata($thumb_id);
+            if ($meta && isset($meta['height']) && $meta['height'] >= $min_height) {
+                $images[] = ['url' => get_the_post_thumbnail_url($post_id, 'full'), 'alt' => get_post_meta($thumb_id, '_wp_attachment_image_alt', true)];
+                $unique_ids[$thumb_id] = true;
+            }
+        }
+        $attachments = get_attached_media('image', $post_id);
+        foreach ($attachments as $attachment) {
+            if (isset($unique_ids[$attachment->ID])) continue;
+            $meta = wp_get_attachment_metadata($attachment->ID);
+            if ($meta && isset($meta['height']) && $meta['height'] >= $min_height) {
+                $images[] = ['url' => wp_get_attachment_url($attachment->ID), 'alt' => get_post_meta($attachment->ID, '_wp_attachment_image_alt', true)];
+            }
+        }
+        return $images;
+    }
+
+    public function enqueue_assets() {
+        if ($this->load_scripts) {
+            wp_enqueue_style('wpcm-news-layout-style', plugin_dir_url(__FILE__) . 'assets/css/main.css', [], '3.6');
+            wp_enqueue_script('wpcm-news-layout-script', plugin_dir_url(__FILE__) . 'assets/js/main.js', [], '3.6', true);
+            wp_localize_script('wpcm-news-layout-script', 'wpcm_news_params', ['interval' => $this->slideshow_interval]);
+        }
+    }
+
+    public function add_subtitle_meta_box() {
+        add_meta_box('wpcm_news_subtitle', 'Subtítulo da Notícia', [$this, 'render_subtitle_meta_box'], 'post', 'normal', 'high');
+    }
+    
+    public function render_subtitle_meta_box($post) {
+        wp_nonce_field('wpcm_news_subtitle_nonce', 'wpcm_news_subtitle_nonce');
+        $subtitle = get_post_meta($post->ID, 'subtitle', true);
+        echo '<input type="text" name="wpcm_news_subtitle" value="' . esc_attr($subtitle) . '" style="width: 100%;" placeholder="Digite o subtítulo da notícia (opcional)" />';
+    }
+
+    public function save_subtitle_meta($post_id) {
+        if (!isset($_POST['wpcm_news_subtitle_nonce']) || !wp_verify_nonce($_POST['wpcm_news_subtitle_nonce'], 'wpcm_news_subtitle_nonce')) return;
+        if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+        if (!current_user_can('edit_post', $post_id)) return;
+        if (isset($_POST['wpcm_news_subtitle'])) {
+            update_post_meta($post_id, 'subtitle', sanitize_text_field($_POST['wpcm_news_subtitle']));
+        }
+    }
+    
+    private function get_custom_excerpt($post_id, $tag_attributes, $global_options) {
+        $limit = !empty($tag_attributes['resumo']) ? $tag_attributes['resumo'] : ($global_options['excerpt_length'] ?? 400);
+        $content = get_post_field('post_content', $post_id);
+        $content_without_tag = $this->strip_magic_tag_from_content($content);
+        $cleaned_content = wp_strip_all_tags(strip_shortcodes($content_without_tag));
+        if (mb_strlen($cleaned_content) > $limit) {
+            return mb_substr($cleaned_content, 0, $limit) . '...';
+        }
+        return $cleaned_content;
     }
 
     private function translate_color($color_key) {
@@ -138,208 +291,91 @@ final class WPCM_News_Layout_Plugin {
         }
         return null;
     }
-    
-    public function render_shortcode($atts) {
-        $atts = shortcode_atts([
-            'category' => '', 'min_height' => 400, 'interval' => 2000,
-            'background_color' => '', 'show_border' => 'true',
-        ], $atts, 'wpcm_news_layout');
-        return $this->render_block_callback($atts);
-    }
-
-    private function get_custom_excerpt($post_id, $tag_attributes) {
-        if (!empty($tag_attributes['resumo'])) {
-            $limit = $tag_attributes['resumo'];
-            $content = get_post_field('post_content', $post_id);
-            $content_without_tag = str_replace($tag_attributes['full_tag'], '', $content);
-            $cleaned_content = wp_strip_all_tags(strip_shortcodes($content_without_tag));
-            if (mb_strlen($cleaned_content) > $limit) {
-                return mb_substr($cleaned_content, 0, $limit) . '...';
-            }
-            return $cleaned_content;
-        }
-        return get_the_excerpt($post_id);
-    }
-
-    public function render_block_callback($attributes) {
-        $category = isset($attributes['category']) ? sanitize_text_field($attributes['category']) : '';
-        $min_height = isset($attributes['min_height']) ? absint($attributes['min_height']) : 400;
-        $this->slideshow_interval = isset($attributes['interval']) ? absint($attributes['interval']) : 2000;
-        $background_color_sc = isset($attributes['background_color']) ? sanitize_hex_color($attributes['background_color']) : '';
-        $show_border = isset($attributes['show_border']) ? filter_var($attributes['show_border'], FILTER_VALIDATE_BOOLEAN) : true;
-        
-        $transient_key = 'wpcm_news_layout_' . md5(serialize($attributes));
-        $cached_html = get_transient($transient_key);
-        if (false !== $cached_html) {
-            $this->load_scripts = true;
-            return $cached_html;
-        }
-        
-        $args = ['post_type' => 'post', 'posts_per_page' => 1, 'post_status' => 'publish', 'orderby' => 'date', 'order' => 'DESC'];
-        if (!empty($category)) { $args['category_name'] = $category; }
-        
-        $query = new WP_Query($args);
-        $output = '';
-        if ($query->have_posts()) {
-            $this->load_scripts = true;
-            ob_start();
-
-            while ($query->have_posts()) {
-                $query->the_post();
-                $post_id = get_the_ID();
-                $post_images = $this->get_post_images($post_id, $min_height);
-                $tag_attributes = $this->get_attributes_from_magic_tag(get_post_field('post_content', $post_id));
-                
-                $final_bg_color = !empty($tag_attributes['fundo']) ? $tag_attributes['fundo'] : $background_color_sc;
-                $final_text_color = !empty($tag_attributes['texto']) ? $tag_attributes['texto'] : null;
-
-                $unique_id = 'wpcm-block-' . uniqid();
-                $inline_styles = '';
-                if (!empty($final_bg_color)) {
-                    $inline_styles .= "#{$unique_id} { background-color: " . esc_attr($final_bg_color) . " !important; }";
-                    $inline_styles .= "#{$unique_id} .news-article { background-color: transparent; }";
-                }
-                if (!empty($final_text_color)) {
-                    $inline_styles .= "#{$unique_id} .news-title a, #{$unique_id} .news-subtitle, #{$unique_id} .news-excerpt { color: " . esc_attr($final_text_color) . " !important; }";
-                }
-                if (!$show_border) {
-                    $inline_styles .= "#{$unique_id} { border: none; padding: 22px; }";
-                }
-                if (!empty($inline_styles)) { echo '<style>' . $inline_styles . '</style>'; }
-                ?>
-                <div id="<?php echo esc_attr($unique_id); ?>" class="wpcm-news-layout">
-                    <article class="news-article">
-                        <div class="news-container">
-                            <div class="news-content">
-                                <h1 class="news-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h1>
-                                <?php
-                                $subtitle = get_post_meta($post_id, 'subtitle', true);
-                                if (!empty($subtitle)) { echo '<h2 class="news-subtitle">' . esc_html($subtitle) . '</h2>'; }
-                                ?>
-                                <div class="news-excerpt"><?php echo $this->get_custom_excerpt($post_id, $tag_attributes); ?></div>
-                                <div class="news-read-more">
-                                    <a href="<?php the_permalink(); ?>" class="news-read-more-btn">Continuar Lendo →</a>
-                                </div>
-                            </div>
-                            <?php if (!empty($post_images)) : ?>
-                                <div class="news-images">
-                                    <?php if (count($post_images) > 1) : ?>
-                                        <div class="news-image-slideshow">
-                                            <?php foreach ($post_images as $index => $image) : ?>
-                                                <div class="news-image-slide<?php echo $index === 0 ? ' active' : ''; ?>">
-                                                    <img src="<?php echo esc_url($image['url']); ?>" alt="<?php echo esc_attr($image['alt']); ?>" class="news-image" loading="lazy" />
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                        <div class="slideshow-dots">
-                                            <?php for ($i = 0; $i < count($post_images); $i++) : ?>
-                                                <span class="dot<?php echo $i === 0 ? ' active' : ''; ?>" data-slide-to="<?php echo $i; ?>"></span>
-                                            <?php endfor; ?>
-                                        </div>
-                                    <?php else : ?>
-                                        <div class="news-image-container">
-                                            <img src="<?php echo esc_url($post_images[0]['url']); ?>" alt="<?php echo esc_attr($post_images[0]['alt']); ?>" class="news-image" loading="lazy" />
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </article>
-                </div>
-                <?php
-            }
-            $output = ob_get_clean();
-        } else {
-            $output = '<div class="wpcm-news-layout no-posts-message"><p>' . __('Nenhuma postagem encontrada.', 'wpcm-news-layout-block') . '</p></div>';
-        }
-        wp_reset_postdata();
-        set_transient($transient_key, $output, HOUR_IN_SECONDS);
-        return $output;
-    }
-    
-    private function get_post_images($post_id, $min_height = 400) { $images = []; $unique_ids = []; if (has_post_thumbnail($post_id)) { $thumb_id = get_post_thumbnail_id($post_id); $meta = wp_get_attachment_metadata($thumb_id); if ($meta && isset($meta['height']) && $meta['height'] >= $min_height) { $images[] = ['url' => get_the_post_thumbnail_url($post_id, 'full'), 'alt' => get_post_meta($thumb_id, '_wp_attachment_image_alt', true)]; $unique_ids[$thumb_id] = true; } } $attachments = get_attached_media('image', $post_id); foreach ($attachments as $attachment) { if (isset($unique_ids[$attachment->ID])) continue; $meta = wp_get_attachment_metadata($attachment->ID); if ($meta && isset($meta['height']) && $meta['height'] >= $min_height) { $images[] = ['url' => wp_get_attachment_url($attachment->ID), 'alt' => get_post_meta($attachment->ID, '_wp_attachment_image_alt', true)]; } } return $images; }
-    public function enqueue_assets() { if ($this->load_scripts) { wp_enqueue_style('wpcm-news-layout-style', plugin_dir_url(__FILE__) . 'assets/css/main.css', [], '2.6'); wp_enqueue_script('wpcm-news-layout-script', plugin_dir_url(__FILE__) . 'assets/js/main.js', [], '2.6', true); wp_localize_script('wpcm-news-layout-script', 'wpcm_news_params', ['interval' => $this->slideshow_interval]); } }
-    public function clear_transient_cache($post_id) { global $wpdb; $prefix = '_transient_wpcm_news_layout_'; $wpdb->query($wpdb->prepare("DELETE FROM $wpdb->options WHERE option_name LIKE %s", $wpdb->esc_like($prefix) . '%')); }
-    public function add_subtitle_meta_box() { add_meta_box('wpcm_news_subtitle', 'Subtítulo da Notícia', [$this, 'render_subtitle_meta_box'], 'post', 'normal', 'high'); }
-    public function render_subtitle_meta_box($post) { wp_nonce_field('wpcm_news_subtitle_nonce', 'wpcm_news_subtitle_nonce'); $subtitle = get_post_meta($post->ID, 'subtitle', true); echo '<input type="text" name="wpcm_news_subtitle" value="' . esc_attr($subtitle) . '" style="width: 100%;" placeholder="Digite o subtítulo da notícia (opcional)" />'; }
-    public function save_subtitle_meta($post_id) { if (!isset($_POST['wpcm_news_subtitle_nonce']) || !wp_verify_nonce($_POST['wpcm_news_subtitle_nonce'], 'wpcm_news_subtitle_nonce')) return; if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return; if (!current_user_can('edit_post', $post_id)) return; if (isset($_POST['wpcm_news_subtitle'])) { update_post_meta($post_id, 'subtitle', sanitize_text_field($_POST['wpcm_news_subtitle'])); } }
 }
 
 WPCM_News_Layout_Plugin::get_instance();
 
 assets/css/main.css
-/* WPCM News Layout Block Styles */
+/* WPCM News Layout Block Styles v3.6 */
+
+/* --- LAYOUT PARA DESKTOP (GRID) --- */
 .wpcm-news-layout {
+    display: grid;
     max-width: 1200px;
     margin: 20px auto;
-    padding: 20px;
-    font-family: "Times New Roman", Times, serif;
+    padding: 30px;
     background: #ffffff;
     border: 2px solid #000;
     border-radius: 8px;
     box-sizing: border-box;
+    gap: 20px 30px; /* Espaçamento entre linhas e colunas */
+    
+    /* Define a grade: título na primeira linha, conteúdo e imagens na segunda */
+    grid-template-areas:
+        "title title"
+        "content images";
+    
+    /* Define a largura das colunas: conteúdo flexível, imagens com 40% */
+    grid-template-columns: 1fr 40%;
 }
 
-.news-article {
-    background: #fff;
-}
+/* Associa cada elemento à sua área na grade */
+.wpcm-news-layout .news-title { grid-area: title; }
+.wpcm-news-layout .news-content { grid-area: content; min-width: 0; }
+.wpcm-news-layout .news-images { grid-area: images; position: relative; }
 
-.news-container {
-    display: flex;
-    gap: 30px;
-    align-items: flex-start;
+/* Estilos gerais dos elementos */
+.wpcm-news-layout .news-title {
+    margin: 0;
+    padding: 0;
 }
-
-.news-content {
-    flex: 1;
-    min-width: 0;
-}
-
-.news-title {
-    font-size: 2.8rem;
-    font-weight: bold;
-    line-height: 1.1;
-    margin: 0 0 15px 0;
-    color: #000;
-    font-family: "Times New Roman", Times, serif;
-}
-
-.news-title a {
+.wpcm-news-layout .news-title a {
     color: inherit;
     text-decoration: none;
+    font-weight: bold;
+    line-height: 1.15;
 }
-.news-title a:hover {
-    text-decoration: underline;
-}
+.wpcm-news-layout .news-title a:hover { text-decoration: underline; }
 
 .news-subtitle {
     font-size: 1.4rem;
     font-weight: normal;
     line-height: 1.3;
-    margin: 0 0 20px 0;
-    color: #333;
+    margin-top: 0;
+    margin-bottom: 20px;
     font-style: italic;
 }
 
 .news-excerpt {
     font-size: 1rem;
-    line-height: 1.5;
-    color: #333;
+    line-height: 1.6;
     margin-bottom: 20px;
     text-align: justify;
 }
 
-.news-images {
-    flex: 0 0 400px;
-    position: relative;
-    max-width: 100%;
+.news-read-more {
+    overflow: hidden; /* Clearfix para o botão flutuante */
+    margin-top: 15px;
 }
+.news-read-more-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+    float: right;
+}
+.news-read-more-btn:hover { opacity: 0.85; }
 
-.news-image-slideshow,
-.news-image-container {
+/* Slideshow de imagens */
+.news-image-slideshow, .news-image-container {
     position: relative;
     width: 100%;
-    height: 450px;
+    height: 400px;
     overflow: hidden;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -375,7 +411,6 @@ assets/css/main.css
     gap: 8px;
     margin-top: 15px;
 }
-
 .dot {
     width: 12px;
     height: 12px;
@@ -384,77 +419,32 @@ assets/css/main.css
     cursor: pointer;
     transition: background 0.3s ease;
 }
-
-.dot.active {
-    background: #333;
-}
-
-.no-posts-message {
-    text-align: center;
-    padding: 40px 20px;
-    color: #666;
-}
-
-/* Estilos para o botão "Continuar Lendo" */
-.news-read-more {
-    margin-top: 20px;
-    text-align: right;
-}
-
-.news-read-more-btn {
-    display: inline-block;
-    padding: 8px 16px;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    color: #333;
-    font-size: 0.9rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    text-decoration: none;
-    background-color: transparent;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.news-read-more-btn:hover {
-    background-color: #333;
-    color: #fff;
-    border-color: #333;
-}
+.dot.active { background: #333; }
 
 
-/* Responsive Design */
+/* --- LAYOUT PARA CELULAR (FLEXBOX + ORDER) --- */
 @media (max-width: 968px) {
-    .news-container {
-        flex-direction: column;
-    }
-    .news-content {
-        margin-bottom: 30px;
-    }
-    .news-images {
-        flex: none;
-        width: 100%;
-        max-width: 500px;
-        margin: 0 auto;
-    }
-    .news-title {
-        font-size: 2.2rem;
-    }
-}
-
-@media (max-width: 768px) {
+    /* Muda o layout para flexível e em coluna */
     .wpcm-news-layout {
-        padding: 15px;
-        border-width: 1px;
+        display: flex;
+        flex-direction: column;
+        grid-template-areas: none; /* Desativa as áreas do grid */
+        grid-template-columns: 100%; /* Uma única coluna */
     }
-    .news-title {
-        font-size: 1.8rem;
-    }
-    .news-subtitle {
-        font-size: 1.2rem;
-    }
+
+    /* Reordena os elementos para a hierarquia móvel */
+    .wpcm-news-layout .news-title { order: 1; margin-bottom: 20px; }
+    .wpcm-news-layout .news-images { order: 2; margin-bottom: 20px; }
+    .wpcm-news-layout .news-content { order: 3; }
+
+    /* Ajuste responsivo do tamanho da fonte do título */
+    .wpcm-news-layout .news-title a { font-size: 42px !important; }
 }
 
-
+@media (max-width: 480px) {
+    .wpcm-news-layout { padding: 20px; }
+    .wpcm-news-layout .news-title a { font-size: 32px !important; }
+}
 
 assets/js/main.js
 
